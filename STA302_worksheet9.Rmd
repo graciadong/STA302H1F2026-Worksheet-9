@@ -1,0 +1,215 @@
+---
+title: "Module 9 Worksheet"
+author: "Prepared by: The STA302H1 Teaching Team"
+output: pdf_document
+geometry: margin=0.5in
+urlcolor: blue
+---
+## Worksheet Information
+**Goal of the worksheet:**  
+  
+The Module 9 worksheet is an opportunity to practice using various model/variable selection techniques to select a suitable model. By completing this worksheet, each student will be developing the skills to achieve the following weekly learning objectives:
+\begin{itemize}
+  \item Use computed likelihood criteria to identify a "best" model among many possibilities
+  \item Select a "best" model using various numerical and contextual criteria
+  \item Defend the choice of "best" model for a given dataset and research question
+\end{itemize}
+This worksheet, in addition to the remainder of the class time, is **important practice for completing questions on the final exam, and for your final project**.
+  
+\
+**Preparation assumed:**  
+
+\begin{itemize}
+\item Please complete this worksheet after attending your in-person lectures for each week. If you did not attend class, please review the annotated slides posted on Quercus.
+\item Additional R/Coding resources are also linked on the Quercus homepage.
+\end{itemize}
+
+\
+**How to complete this worksheet:**  
+  
+\begin{itemize}
+  \item Students may work and discuss this worksheet in small groups of 2-3 if desired. However {\bf each student} must submit their worksheet to MarkUs to receive their completion credit. Each student most work on their {\bf own copy} of the assignment.
+  \item All the code and course knowledge needed to complete this worksheet has been provided in the class materials. It may help to have these open while working on this document.
+  \item Follow the instructions provided in each question to complete the code.
+  \item DO NOT change the names of the variables that store your final answers.
+  \item When in doubt about a question in the worksheet or your code, ask a TA or the instructor during office hours or on the discussion board.
+\end{itemize}
+  
+\
+**Steps for submitting to MarkUs:**  
+
+\begin{enumerate}
+  \item Go to \href{https://markus.teach.cs.toronto.edu/markus}{MarkUs} and log in using your UofT credentials.
+  \item Select the STA302 course from the list.
+  \item Select Worksheet 9 from the assignment list.
+  \item Under Submissions, upload your Rmd file and select the file name from the list.
+  \item Go to Automated Testing and select Run Tests to check your worksheet answers.
+  \item You can submit as many times as you want, but only your latest submission before the deadline will be counted. 
+  \item It is recommended you submit your file to \href{https://markus.teach.cs.toronto.edu/markus}{MarkUs} after you complete each activity to check your answers before moving on. You can submit multiple times to check your work, as your autograding tokens regenerate over time. 
+  \item Even if you are out of autograding tokens, you can still submit your work. You just cannot check if your answers are correct yourself, but the tests will still be run by the instructor for grading. 
+  \item If you are having trouble with the submission process, please post on the discussion board.
+\end{enumerate}
+
+## What to do if a test fails on MarkUs
+
+\begin{enumerate}
+  \item Don't panic. Your work won't really be graded until the deadline, so start early to make sure you have lots of time to resolve issues before the deadline.
+  \item Read the message to get hints about what the problem is. For example "variable X not present" means that you may have a typo in your variable name.
+  \item Search on the discussion board to see if other classmates have encountered a similar error (and if not, consider posting a screenshot of the error message).
+  \item Sometimes, it will resolve the problem if you type out your values as a number (e.g. var <- 1) instead of a function (e.g. var <- round(...)).
+  \item Come to TA or instructor office hours with your issue.
+\end{enumerate}
+
+\newpage
+This week, we will be working with a dataset that comes with lots of interesting problems. The data `pgatour2006.csv` has been loaded to JupyterHub with your RMD worksheet. It contains the variables:
+
+  - $Y$, PrizeMoney = average prize money per tournament
+  - $X_1$, Driving Accuracy is the percent of time a player is able to hit the fairway with his tee shot.
+  - $X_2$, GIR, Greens in Regulation, is the percent of time a player was able to hit the green in regulation. A green is considered hit in regulation if any part of the ball is touching the putting surface and the number of strokes taken is two or less than par.
+  - $X_3$, Putting Average measures putting performance on those holes where the gree is hit in regulation (GIR).
+  - $X_4$, Birdie Conversion % is the percent of time a player makes a birdie or better after hitting the green in regulation
+  - $X_5$, SandSaves % is the percent of time a player was able to get "up and down" once in a greenside sand bunker.
+  - $X_6$, Scrambling % is the percent of time that a player misses the green in regulation, but still makes par or better.
+  - $X_7$, PuttsPerRound is the average total number of putts per round.
+
+We will be using this dataset to practice selecting variables/models using various procedures and understanding the limitations of certain processes. 
+
+## 0) Set up the data
+
+To begin, load the dataset from the file `pgatour2006.csv`. Subset the data to remove the columns we do not wish to consider (i.e., all variables not listed above). This will make using the automated procedures simpler.  
+  
+To create the subset, you will tell R to remove columns 1, 2, 4, and 11 by using the matrix row-column notation `[,-c(1,2,4,11)]` on your `pga` dataset. Store this in the variable `d` in place of `NULL`.
+
+```{r}
+library(MASS)
+
+# load the data
+pga <- read.csv(file="pgatour2006.csv", header=T)
+
+# subset the data to remove columns 1, 2, 4, 11
+d <- NULL
+```
+
+## 1) Automated Selection with Untransformed Response
+
+Let's see what model would be selected using *backward selection with AIC*. To do this, run the `stepAIC` code below which tells R to:
+\begin{itemize}
+  \item start with a full model including the 7 predictors (a period is a quick way to say "use all predictors")
+  \item move in a backwards direction
+  \item evaluate model fit using AIC
+  \item and consider the best model meeting the conditions before reaching the intercept-only model
+\end{itemize}
+
+```{r, eval=F}
+stepAIC(lm(PrizeMoney ~ ., data=d), 
+        scope=list(lower=lm(PrizeMoney ~ 1, data=d)), 
+        direction = "backward", k=2)
+```
+
+Build the model that this automated procedure says is the "best" one using your dataset `d`, and store this in `model1`. Then, extract the following three goodness criteria from `model1`:
+
+  - the adjusted $R^2$, using `summary(model1)$adj.r.squared`
+  - AIC value, using `extractAIC(model1, k=2)[2]`
+  - the BIC value, using `extractAIC(model1, k=log(nrow(d)))[2]`
+
+By writing these 3 functions in this order inside of a `c()` function, this will allow you to store all three in the variable `criteria1` in place of `NULL` (see Module 9 slide 7 for an example of this).
+
+```{r}
+# create the best model from backward AIC selection
+model1 <- NULL
+
+# store the adjusted R^2, AIC, and BIC in a c() below
+criteria1 <- NULL
+```
+
+
+## 2) Automated Selection with Transformed Response
+
+We previously saw that the assumptions of linear regression are not satisfied when we fit a full model in Module 6. We can determine whether this will have an impact on the final model output from the automated procedures. Run the code below that performs backward selection using the AIC with a transformed response.
+
+```{r}
+# transform the response
+lnPrize <- NULL
+```
+
+```{r, eval=F}
+stepAIC(lm(lnPrize ~ ., data=d[,-1]), 
+        scope=list(lower=lm(lnPrize ~ 1, data=d[,-1])), 
+        direction = "backward", k=2)
+```
+
+Build the model that this automated procedure says is the "best" one using your dataset `d`, and store this in `model2`. Then, extract the same three goodness criteria as before and store these in `criteria2` in place of `NULL`.
+
+```{r}
+# create the best model from backward AIC selection
+model2 <- NULL
+
+# store the adjusted R^2, AIC, and BIC in a c() below
+criteria2 <- NULL
+```
+
+We can compare this model to the model selected from a *forward selection using the BIC*. To do this, run the `stepAIC` code below which tells R to:
+\begin{itemize}
+  \item start with an intercept-only model
+  \item move in a forwards direction
+  \item evaluate model fit using BIC
+  \item and consider the best model meeting the conditions before reaching the full model with all 7 predictors
+\end{itemize}
+
+```{r, eval=F}
+stepAIC(lm(lnPrize ~ 1, data=d[,-1]), 
+        scope=list(upper=lm(lnPrize ~ ., data=d[,-1])), 
+        direction = "forward", k=log(nrow(d)))
+```
+
+Build the model that this automated procedure says is the "best" one using your dataset `d`, and store this in `model3`. Then, extract the same three goodness criteria as before and store these in `criteria3` in place of `NULL`.
+
+```{r}
+# create the best model from forward BIC selection
+model3 <- NULL
+
+# store the adjusted R^2, AIC, and BIC in a c() below
+criteria3 <- NULL
+```
+
+
+**Question: Compare model1, model2, and model3. Which model would you pick as being the "best" one, based on the 3 goodness criteria you computed? Justify**  
+TYPE YOUR ANSWER BELOW:  
+  
+
+
+## 3) All Possible Subsets
+
+```{r}
+################################################################
+# uncomment, run, then comment out whole block before submitting
+################################################################
+
+#install.packages("leaps")
+#install.packages("car")
+#library(leaps)
+#library(car)
+
+# runs all possible subsets
+#best <- regsubsets(lnPrize ~ ., data=d[,-1], nbest=1, nvmax=7)
+#summary(best)
+###############################################################
+```
+
+Build the best model containing 3 predictors suggested by the all possible subsets procedure. This will be the same model that we ended with in the Module 7 worksheet. Store this in `model4` in place of `NULL`. Then compute the same 3 goodness criteria as before and store these in `criteria4` in place of `NULL`.
+
+```{r}
+# create the best 3-predictor model from all possible subsets
+model4 <- NULL
+
+# store the adjusted R^2, AIC, and BIC in a c() below
+criteria4 <- NULL
+```
+
+**Question: Compare model2, model3, and model4. Which model would you pick as being the "best" one, based on the 3 goodness criteria you computed? You can also consider other diagnostics we discussed in Module 7 and 8.**  
+TYPE YOUR ANSWER BELOW:  
+  
+ 
+  
+-----------------
+END OF WORKSHEET - BE SURE TO SUBMIT YOUR WORKSHEET ON MARKUS TO RECEIVE COMPLETION CREDIT  
